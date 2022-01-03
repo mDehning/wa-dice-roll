@@ -4,6 +4,10 @@ This script allows to pass a String identifying a dice roll mechanic and returns
 
 Currently, the script returns the sum of values rolled by the specified dice.
 
+# How to use
+
+Include the file `src/impl/diceRoller.php` and intialize a new DiceRoller Object. The file contains the interface as well - currently the only method exposed is `rollDice($input)` which will parse a String and return a number result of the random roll.
+
 ## Dice Notation
 
 ### Simple Roll
