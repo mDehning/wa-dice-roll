@@ -40,7 +40,7 @@
     echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
 
     // Dropping the highest rolled number once
-    $dice = "20d1-L";
+    $dice = "20d1-H";
     echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
 
     // Dropping the highest rolled number once with added dice
