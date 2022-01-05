@@ -1,7 +1,4 @@
 <?php
-    // TODO:
-    // - Clean Up unusued functions
-    // - Expand do-while with a dynamic register of regex and subfunctions
 
     interface DiceRollerIF{
 
@@ -75,13 +72,24 @@
 
     class DiceRoller implements DiceRollerIF{
  
+        private $regexMatches = [
+            // possible format: Number Modifer at the end of String 
+            ['/^\s*(\d+)\s*$/m', 'partialRollModifier'],
+
+            // possible format: XdY-[LH][+-]Z
+            ['/^(\d*)[dD](\d+)\s*-([LH])\s*([\+-])?\s*(.*)$/m', 'partialRollSimpleWithDrop'],
+
+            // possible format: XdY[+-]Z
+            ['/^(\d*)[dD](\d+)\s*([\+-])?\s*(.*)$/m', 'partialRollSimple']
+        ];
+
         final function rollDiceComplex(String $rollString): DiceRollerResult{
             $result = new DiceRollerResult($rollString);
             if(empty(trim($rollString))){
                 return $result;
             }
 
-            // Now the main part: Matching all those strings and using the correct function to create a partial result
+            // Main part: Matching all those strings and using the correct function to create a partial result
             // Until the string is empty / has no more matches
             $partialResults = [];
             $nextString = $rollString;
@@ -89,48 +97,22 @@
             $nextSign = 1;
             do{
                 $nextResult = null;
-            
-                // possible format: Number Modifer at the end of String
-                $regexNumber = '/^\s*(\d+)\s*$/m';
-                preg_match($regexNumber, $nextString, $matches);
-                if($matches){
-                    $nextResult = $this->partialRollModifier($matches);
-                    $nextResult->sign = $nextSign;
+                
+                foreach($this->regexMatches as $regexMatcher){
+                    preg_match($regexMatcher[0], $nextString, $matches);
+                    if($matches){
+                        $function = $regexMatcher[1];
+                        $nextResult = $this->$function($matches);
+                        $nextResult->sign = $nextSign;
 
-                    $nextSign = $nextResult->nextSign;
-                    $nextString = $nextResult->nextString;
-
-                    array_push($partialResults, $nextResult);
-                    continue;
+                        $nextSign = $nextResult->nextSign;
+                        $nextString = $nextResult->nextString;
+    
+                        array_push($partialResults, $nextResult);
+                        break;
+                    }
                 }
-
-                // possible format: XdY-[LH][+-]Z
-                $regexDropHighLow = '/^(\d*)[dD](\d+)\s*-([LH])\s*([\+-])?\s*(.*)$/m';
-                preg_match($regexDropHighLow, $nextString, $matches);
-                if($matches){
-                    $nextResult = $this->partialRollSimpleWithDrop($matches);
-                    $nextResult->sign = $nextSign;
-
-                    $nextSign = $nextResult->nextSign;
-                    $nextString = $nextResult->nextString;
-
-                    array_push($partialResults, $nextResult);
-                    continue;
-                }
-
-                // possible format: XdY[+-]Z
-                $regexDice= '/^(\d*)[dD](\d+)\s*([\+-])?\s*(.*)$/m';
-                preg_match($regexDice, $nextString, $matches);
-                if($matches){
-                    $nextResult = $this->partialRollSimple($matches);
-                    $nextResult->sign = $nextSign;
-
-                    $nextSign = $nextResult->nextSign;
-                    $nextString = $nextResult->nextString;
-
-                    array_push($partialResults, $nextResult);
-                    continue;
-                }
+                
             }while($nextResult != null && !empty(trim($nextString)));
 
             // After this all Partial Results need to be interpreted for the full result
@@ -161,27 +143,9 @@
         }
        
         final function rollDice(String $rollString): int{
-    
            return $this->rollDiceComplex($rollString)->getDiceSum();
         }
-    
-
-        /**
-         * Takes the operator and a rest string to add or subtract to the rolled value
-         * so far with subsequent rolls. 
-         */
-        // TODO: DEPRECATED
-        private function continueRoll($value, $operator, $restString){
-            if($operator){
-            switch($operator){
-                case "+": $value += $this->rollDice($restString); break;
-                case "-": $value -= $this->rollDice($restString); break;
-                default: ;
-            } 
-            }
-            
-            return $value;
-        }
+  
         private function getSign(String $operator): int{
             if($operator){
                 switch($operator){
@@ -198,6 +162,13 @@
             $partialResult->mod = intval($matches[1]);
             return $partialResult;
         }
+
+        /**
+         * Rolls a multitude of dice and drops either the highest or the lowest value
+         * from the result.
+         * May continue with additional rolls. Dropping only effects the roll directly
+         * before the denotation -L/-H
+         */
         private function partialRollSimpleWithDrop($matches): DiceRollerPartialResult{
             $partialResult = new DiceRollerPartialResult();
 
@@ -210,7 +181,7 @@
                 $highestIndex = 0;
                 $lowest = $numSides + 1;
                 $lowestIndex = 0;
-                for($i = 1; $i <= $numRolls; $i++){
+                for($i = 0; $i < $numRolls; $i++){
                     $roll = random_int(1, $numSides);
                     array_push($result, $roll);
                     if($roll > $highest){
@@ -240,46 +211,11 @@
             $partialResult->nextString = $matches[5];
             return $partialResult;
         }
+
         /**
-         * Rolls a multitude of dice and drops either the highest or the lowest value
-         * from the result.
-         * May continue with additional rolls. Dropping only effects the roll directly
-         * before the denotation -L/-H
+         * Rolls a number of dice and adds the values together. 
+         * May continue with additonal rolls
          */
-        private function rollSimpleWithDrop($matches){
-            $numRolls = $matches[1] ? $matches[1] : 1;
-                $numSides = $matches[2];
-                
-                $highest = 1;
-                $lowest = $numSides;
-                
-                $result = 0;
-                
-                if($numSides > 0){
-                for($i = 0; $i < $numRolls; $i++){
-                    
-                        $roll = random_int(1, $numSides);
-                        if($roll > $highest){
-                            $highest = $roll;   
-                        }
-                        if($roll < $lowest){
-                            $lowest = $roll;
-                        }
-                        $result += $roll;
-                    } 
-                    switch($matches[3]){
-                        case "L": $result -= $lowest; break;
-                        case "H": $result -= $highest; break;
-                        default: break;
-                    }
-                
-                    $result = $this->continueRoll($result, $matches[4], $matches[5]);    
-
-                }
-                
-                return $result;
-        }
-
         private function partialRollSimple(array $matches): DiceRollerPartialResult{
             $partialResult = new DiceRollerPartialResult();
             $numRolls = $matches[1] ? $matches[1] : 1;
@@ -297,28 +233,5 @@
             $partialResult->nextString = $matches[4];
             return $partialResult;
         }
-        /**
-         * Rolls a number of dice and adds the values together. 
-         * May continue with additonal rolls
-         */
-        // DEPRECATED
-        private function rollSimple($matches){
-            $numRolls = $matches[1] ? $matches[1] : 1;
-                $numSides = $matches[2];
-                
-                $result = 0;
-                
-                if($numSides > 0){
-                    for($i = 0; $i < $numRolls; $i++){
-                        $result += random_int(1, $numSides);
-                    }
-                }
-                
-                $result = $this->continueRoll($result, $matches[3], $matches[4]);
-                
-                return $result;
-        }
-
-      
     }
 ?>
