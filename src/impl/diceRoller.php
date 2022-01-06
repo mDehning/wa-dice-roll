@@ -25,6 +25,8 @@
         // The sum of all rolls, while respecting certain rules like Drop X Lowest rolls
         private $diceSum;
         
+        private $successes;
+
         // Each single Roll Result in a flat array. 
         // Exploding Dice are summed together instead of displayed as a single die (so rolling a d4 twice will show as 5 not 4 and 1)
         private $diceArray;
@@ -61,6 +63,13 @@
         function getDiceArray(): array{
             return $this->diceArray;
         }
+
+        function setSuccesses(int $successes){
+            $this->successes = $successes;
+        }
+        function getSuccesses(): int{
+            return $this->successes;
+        }
     }
     class DiceRollerPartialResult {
         public $sign = 1; // can be -1 if added with negative value
@@ -68,6 +77,8 @@
         public $rolls = []; // the array of (valid) roll results of this particular substring
         public $nextSign = 1; // The sign for the upcoming unprocessed suffix that was not processed for this partial Result
         public $nextString = ""; // the String suffix that was not processed for this partial Result
+        public $targetOp = null;
+        public $targetNum = null;
     }
 
     class DiceRoller implements DiceRollerIF{
@@ -76,12 +87,33 @@
             // possible format: Number Modifer at the end of String 
             ['/^\s*(\d+)\s*$/m', 'partialRollModifier'],
 
+            // possible format: XdY [>=|>|=|<|<=]T ![>=|>|=|<|<=]R-[LH][+-]Z
+            // R is the Reroll Target, T is the Success Target
+            ['/^(\d*)[dD](\d+)\s*(>=|>|<|<=|=)\s*(\d+)\s*!(>=|>|<|<=|=)\s*(\d+)\s*-([LH])\s*([\+-])?\s*(.*)$/m', 'partialRollTargetExplodingWithDrop'],
+
             // possible format: XdY ![>=|>|=|<|<=]R-[LH][+-]Z
             // R is the Reroll Target
             ['/^(\d*)[dD](\d+)\s*!(>=|>|<|<=|=)\s*(\d+)\s*-([LH])\s*([\+-])?\s*(.*)$/m', 'partialRollExplodingWithDrop'],
 
+            // possible format: XdY [>=|>|=|<|<=]T -[LH][+-]Z
+            // T is the Success Target
+            ['/^(\d*)[dD](\d+)\s*(>=|>|<|<=|=)\s*(\d+)\s*-([LH])\s*([\+-])?\s*(.*)$/m', 'partialRollTargetWithDrop'],
+
+            // (>=|>|<|<=|=)\s*(\d+)\s*
             // possible format: XdY-[LH][+-]Z
             ['/^(\d*)[dD](\d+)\s*-([LH])\s*([\+-])?\s*(.*)$/m', 'partialRollSimpleWithDrop'],
+
+            // possible format: XdY [>=|>|=|<|<=]T ![>=|>|=|<|<=]R[+-]Z
+            // R is the Reroll Target, T is the Success Target
+            ['/^(\d*)[dD](\d+)\s*(>=|>|<|<=|=)\s*(\d+)\s*!(>=|>|<|<=|=)\s*(\d+)\s*([\+-])?\s*(.*)$/m', 'partialTargetRollExploding'],
+
+            // possible format: XdY ![>=|>|=|<|<=]R[+-]Z
+            // R is the Reroll Target, T is the Success Target
+            ['/^(\d*)[dD](\d+)\s*!(>=|>|<|<=|=)\s*(\d+)\s*([\+-])?\s*(.*)$/m', 'partialRollExploding'],
+
+            // possible format: XdY [>=|>|=|<|<=]T [+-]Z
+            // R is the Reroll Target, T is the Success Target
+            ['/^(\d*)[dD](\d+)\s*(>=|>|<|<=|=)\s*(\d+)\s*([\+-])?\s*(.*)$/m', 'partialTargetRoll'],
 
             // possible format: XdY[+-]Z
             ['/^(\d*)[dD](\d+)\s*([\+-])?\s*(.*)$/m', 'partialRollSimple']
@@ -125,6 +157,8 @@
             $diceSum = 0;
             $diceMod = 0;
             $diceArray = [];
+            $diceString = "";
+            $successes = 0;
             foreach($partialResults as $partial){
                 // add the mod to the result, with respect to the sign
                 $diceSum += $partial->sign * $partial->mod;
@@ -133,17 +167,47 @@
                 // add the sum of the roll to the result, with respect to the sign
                 $diceSum += $partial-> sign * array_sum($partial->rolls);
 
+                // adds each entry to the String after checking for a potential target
+                foreach($partial->rolls as $singleRoll){
+                    $diceString .= $singleRoll;
+                    if($this->fulfillsTarget($singleRoll, $partial->targetOp, $partial->targetNum)){
+                        $successes++;
+                        $diceString .="*";
+                    }
+                    $diceString .= ", ";
+                }
+
                 // add the array to the result array
                 $diceArray = array_merge($diceArray, $partial->rolls);
             }
+            if(!empty($diceString)){
+                $diceString = substr($diceString, 0, -2);
+            }
+            $diceString = "[$diceString]";
 
             $result->setDiceArray($diceArray);
             $result->setDiceSum($diceSum);
-            // create the Output String for the diceArray
-            $result->setDiceString($this->implodeRolls($diceArray, $diceMod));
+            $result->setDiceString($diceString);
+            $result->setSuccesses($successes);
+
+           // $result->setDiceString($this->implodeRolls($diceArray, $diceMod));
             return $result;
         }
 
+        final function fulfillsTarget($val, $op, $target): bool{
+            if(!($op && $target)){
+                return false;
+            }
+            switch($op){
+                case ">=": return $val >= $target;
+                case ">": return $val > $target;
+                case "=": return $val == $target;
+                case "<=": return $val <= $target;
+                case "<": return $val < $target;
+                default:;
+            }
+            return false;
+        }
         final function implodeRolls(array $rolls, int $mod): String {
             $result = "[" . implode(", ", $rolls) . "]";
             if($mod && $mod != 0){
@@ -272,6 +336,15 @@
             return $this->partialRollWithDrop($numRolls, $numSides, $dropOperator, $matches[4], $matches[5]);
         }
 
+        private function partialRollTargetWithDrop($matches): DiceRollerPartialResult{
+            $numRolls = $matches[1] ? $matches[1] : 1;
+            $numSides = $matches[2];
+            $dropOperator = $matches[5];
+            $result = $this->partialRollWithDrop($numRolls, $numSides, $dropOperator, $matches[6], $matches[7]);
+            $result->targetOp = $matches[3];
+            $result->targetNum = $matches[4];
+            return $result;
+        }
           /**
          * Rolls a multitude of dice and drops either the highest or the lowest value
          * from the result. Individual rolls may explode based on the given operator and target.
@@ -288,6 +361,17 @@
             return $this->partialRollWithDrop($numRolls, $numSides, $dropOperator, $matches[6], $matches[7], $explodingOperator, $explodingTarget);
         }
 
+        private function partialRollTargetExplodingWithDrop($matches): DiceRollerPartialResult{
+            $numRolls = $matches[1] ? $matches[1] : 1;
+            $numSides = $matches[2];
+            $explodingOperator = $matches[5];
+            $explodingTarget = $matches[6];
+            $dropOperator = $matches[7];
+            $result = $this->partialRollWithDrop($numRolls, $numSides, $dropOperator, $matches[8], $matches[9], $explodingOperator, $explodingTarget);
+            $result->targetOp = $matches[3];
+            $result->targetNum = $matches[4];
+            return $result;
+        }
         /**
          * Central internal method for simple rolls. Rolls may "explode" as in repeated and added up when a certain condition is met
          */
@@ -315,9 +399,39 @@
         private function partialRollSimple(array $matches): DiceRollerPartialResult{
             $numRolls = $matches[1] ? $matches[1] : 1;
             $numSides = $matches[2];
-            $partialResult = $this->partialRoll($numRolls, $numSides, $matches[3], $matches[4]);
+            $result = $this->partialRoll($numRolls, $numSides, $matches[3], $matches[4]);
 
-            return $partialResult;
+            return $result;
+        }
+
+        private function partialRollExploding(array $matches): DiceRollerPartialResult{
+            $numRolls = $matches[1] ? $matches[1] : 1;
+            $numSides = $matches[2];
+            $explodingOperator = $matches[3];
+            $explodingTarget = $matches[4];
+            $result = $this->partialRoll($numRolls, $numSides, $matches[5], $matches[6], $explodingOperator, $explodingTarget);
+
+            return $result;
+        }
+
+        private function partialTargetRoll(array $matches): DiceRollerPartialResult{
+            $numRolls = $matches[1] ? $matches[1] : 1;
+            $numSides = $matches[2];
+            $result = $this->partialRoll($numRolls, $numSides, $matches[5], $matches[6]);
+            $result->targetOp = $matches[3];
+            $result->targetNum = $matches[4];
+            return $result;
+        }
+
+        private function partialTargetRollExploding(array $matches): DiceRollerPartialResult{
+            $numRolls = $matches[1] ? $matches[1] : 1;
+            $numSides = $matches[2];
+            $explodingOperator = $matches[5];
+            $explodingTarget = $matches[6];
+            $result = $this->partialRoll($numRolls, $numSides, $matches[7], $matches[8], $explodingOperator, $explodingTarget);
+            $result->targetOp = $matches[3];
+            $result->targetNum = $matches[4];
+            return $result;
         }
     }
 ?>
