@@ -27,6 +27,7 @@
         
         private $successes;
 
+        private $withTarget; // flag, true if at least one time a target was used in the input
         // Each single Roll Result in a flat array. 
         // Exploding Dice are summed together instead of displayed as a single die (so rolling a d4 twice will show as 5 not 4 and 1)
         private $diceArray;
@@ -69,6 +70,13 @@
         }
         function getSuccesses(): int{
             return $this->successes;
+        }
+
+        function setWithTarget(bool $withTarget){
+            $this->withTarget = $withTarget;
+        }
+        function isWithTarget() {
+            return $this->withTarget;
         }
     }
     class DiceRollerPartialResult {
@@ -159,6 +167,7 @@
             $diceArray = [];
             $diceString = "";
             $successes = 0;
+            $hasTargets = false;
             foreach($partialResults as $partial){
                 // add the mod to the result, with respect to the sign
                 $diceSum += $partial->sign * $partial->mod;
@@ -167,11 +176,14 @@
                 // add the sum of the roll to the result, with respect to the sign
                 $diceSum += $partial-> sign * array_sum($partial->rolls);
 
+                // Remember if a roll with Target Number was encountered at least once
+                $hasTargets |= ($partial->targetOp && $partial->targetNum);
+
                 // adds each entry to the String after checking for a potential target
                 foreach($partial->rolls as $singleRoll){
                     $diceString .= $singleRoll;
                     if($this->fulfillsTarget($singleRoll, $partial->targetOp, $partial->targetNum)){
-                        $successes++;
+                        $successes += $partial->sign;
                         $diceString .="*";
                     }
                     $diceString .= ", ";
@@ -183,12 +195,13 @@
             if(!empty($diceString)){
                 $diceString = substr($diceString, 0, -2);
             }
-            $diceString = "[$diceString]";
-
+            $diceString = "[$diceString] = " . ($hasTargets ? $successes : $diceSum);
+            
             $result->setDiceArray($diceArray);
             $result->setDiceSum($diceSum);
             $result->setDiceString($diceString);
             $result->setSuccesses($successes);
+            $result->setWithTarget($hasTargets);
 
            // $result->setDiceString($this->implodeRolls($diceArray, $diceMod));
             return $result;
@@ -218,7 +231,8 @@
         }
        
         final function rollDice(String $rollString): int{
-           return $this->rollDiceComplex($rollString)->getDiceSum();
+           $result = $this->rollDiceComplex($rollString);
+           return $result->isWithTarget() ? $result->getSuccesses() : $result->getDiceSum();
         }
   
         private function getSign(String $operator): int{
