@@ -22,14 +22,12 @@
         // Rolls with Drop Mechanic
         ["20d1-L", "Dropping the lowest rolled number once"],
         ["20d1-H", "Dropping the highest rolled number once"],
-        ["20d1-L + 50d1 + 5", "Dropping the highest rolled number once with added dice"],
-        // Rolls with Exploding Dice and Drop Mechanic
         ["10d4!>=3-H", "Dropping the highest rolled number once, Exploding Dice when Roll of 3 or 4"],
         ["10d4!>3-H", "Dropping the highest rolled number once, Exploding Dice when Roll of 4"],
         ["10d7!<=4-H", "Dropping the highest rolled number once, Exploding Dice when Roll of 4 or less"],
         ["10d7!<4-H", "Dropping the highest rolled number once, Exploding Dice when Roll of 3 or less"],
-        ["10d10!=2-H", "Dropping the highest rolled number once, Exploding Dice when Roll exactly 2"]
-        
+        ["10d10!=2-H", "Dropping the highest rolled number once, Exploding Dice when Roll exactly 2"],
+        ["20d1-L + 50d1 + 5", "Dropping the highest rolled number once with added dice"]
     ];
 
     echo("<h2>Simple Rolls with Sum Result</h2>");
@@ -44,13 +42,13 @@
     foreach($examples as $complexRoll){
         $result = $diceRoller->rollDiceComplex($complexRoll[0]);
         echo("<div><p>");
-        echo("<table>");
-        echo("<tr><td colspan=2>". $complexRoll[1] ."</td></tr>");
-        echo("<tr><td>Input:</td><td>". $result->getRollString() ."</td></tr>");
-        echo("<tr><td>Sum:</td><td>". $result->getdiceSum() ."</td></tr>");
-        echo("<tr><td>Rolled Dice:</td><td>". $result->getDiceString() ."</td></tr>");
-        echo("</table>\n\n");
-        echo("</p></div>");
+        echo("<table>\n");
+        echo("<tr><td colspan=2>". $complexRoll[1] ."</td></tr>\n");
+        echo("<tr><td>Input:</td><td>". $result->getRollString() ."</td></tr>\n");
+        echo("<tr><td>Sum:</td><td>". $result->getdiceSum() ."</td></tr>\n");
+        echo("<tr><td>Rolled Dice:</td><td>". $result->getDiceString() ."</td></tr>\n");
+        echo("</table>");
+        echo("</p></div>\n\n");
     }
     // Showing the Result Array of a roll
     $dice = "4d10 + 3d20 + 5";
