@@ -15,10 +15,15 @@
         ["XdY", "Non-numeric entries are ignored and return 0"],
         ["1d100 * 5 + 100", "Everything after a wrong operator is ignored"],
         // Exploding Simple Rolls
-        ["5d10!>=9", "Roll a dice multiple times, exploding Dice when roll of 9 or 10"],
-        ["5d10!>9", "Roll a dice multiple times, exploding Dice when roll of 10"],
-        ["5d10!=7", "Roll a dice multiple times, exploding Dice when roll of 7"],
+        ["5d13!>=9", "Roll a dice multiple times, exploding Dice when roll of 9 or 10"],
+        ["5d12!>9", "Roll a dice multiple times, exploding Dice when roll of 10"],
+        ["5d8!=7", "Roll a dice multiple times, exploding Dice when roll of 7"],
         ["5d10!>=8 + 3d100!>75", "Roll multiple dice with different target rules"],
+        // Targets
+        ["5d8>7", "Success at 8"],
+        ["5d8>7!>=6", "Success at 8 or higher, Explode at 6 or higher"],
+        ["10d8>7!>=6-H", "Dropping the highest rolled number once, success at 8 or higher, Explodes at 6"],
+        ["10d8>7-H", "Dropping the highest rolled number once, success at 8"],
         // Rolls with Drop Mechanic
         ["20d1-L", "Dropping the lowest rolled number once"],
         ["20d1-H", "Dropping the highest rolled number once"],
@@ -45,14 +50,12 @@
         echo("<table>\n");
         echo("<tr><td colspan=2>". $complexRoll[1] ."</td></tr>\n");
         echo("<tr><td>Input:</td><td>". $result->getRollString() ."</td></tr>\n");
-        echo("<tr><td>Sum:</td><td>". $result->getdiceSum() ."</td></tr>\n");
+        echo("<tr><td>Sum:</td><td>". $result->getDiceSum() ."</td></tr>\n");
+        echo("<tr><td>Successes:</td><td>". $result->getSuccesses() ."</td></tr>\n");
         echo("<tr><td>Rolled Dice:</td><td>". $result->getDiceString() ."</td></tr>\n");
         echo("</table>");
         echo("</p></div>\n\n");
     }
-    // Showing the Result Array of a roll
-    $dice = "4d10 + 3d20 + 5";
-    $result = $diceRoller->rollDiceComplex($dice);
-    echo($result->getRollString() . ":\t ". $result->getDiceString() . " = " . $result->getDiceSum() . "<br />\n");
+
 
 ?>
