@@ -40,11 +40,16 @@
     echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
 
     // Dropping the highest rolled number once
-    $dice = "20d1-L";
+    $dice = "20d1-H";
     echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
 
     // Dropping the highest rolled number once with added dice
     $dice = "20d1-L + 50d1 + 5"; // expect 19 + 50 + 5 = 74
     echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
+
+    // Showing the Result Array of a roll
+    $dice = "4d10 + 3d20 + 5";
+    $result = $diceRoller->rollDiceComplex($dice);
+    echo($result->getRollString() . ":\t ". $result->getDiceString() . " = " . $result->getDiceSum() . "<br />\n");
 
 ?>
