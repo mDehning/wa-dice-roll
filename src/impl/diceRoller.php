@@ -76,6 +76,10 @@
             // possible format: Number Modifer at the end of String 
             ['/^\s*(\d+)\s*$/m', 'partialRollModifier'],
 
+            // possible format: XdY ![>=|>|=|<|<=]R-[LH][+-]Z
+            // R is the Reroll Target
+            ['/^(\d*)[dD](\d+)\s*!(>=|>|<|<=|=)\s*(\d+)\s*-([LH])\s*([\+-])?\s*(.*)$/m', 'partialRollExplodingWithDrop'],
+
             // possible format: XdY-[LH][+-]Z
             ['/^(\d*)[dD](\d+)\s*-([LH])\s*([\+-])?\s*(.*)$/m', 'partialRollSimpleWithDrop'],
 
@@ -170,17 +174,55 @@
             return $partialResult;
         }
 
+        private function roll($numSides): int{
+            return $this->rollWithExplode($numSides);
+        }
         /**
-         * Rolls a multitude of dice and drops either the highest or the lowest value
-         * from the result.
-         * May continue with additional rolls. Dropping only effects the roll directly
-         * before the denotation -L/-H
+         * Rolls the number of dice and rerolls them, if the explode condition is met (and given in teh first place)
+         * Checks and denies conditions that would result in an infinite loop
+         * Returns the sum of all rolls
          */
-        private function partialRollSimpleWithDrop($matches): DiceRollerPartialResult{
+        private function rollWithExplode($numSides, $explOperator = null, $explTarget = null): int{
+            if(!($explOperator && $explTarget)){
+                return random_int(1, $numSides);
+            }
+            // Catch Values that would lead to infinite rerolls
+            $infiniteExplosion = false;
+            switch($explOperator){
+                case ">=": $infiniteExplosion = $explTarget <= 1; break;
+                case ">": $infiniteExplosion = $explTarget <= 0; break;
+                case "<=": $infiniteExplosion = $explTarget >= $numSides; break;
+                case "<": $infiniteExplosion = $explTarget > $numSides; break;
+                default:;
+            }
+            if($infiniteExplosion){
+                random_int(1, $numSides);
+            }
+            $result = 0;
+            do{
+                $nextRoll = random_int(1, $numSides);
+                $result += $nextRoll;
+
+                $explodes = false;
+                switch($explOperator){
+                    case ">=": $explodes = $nextRoll >= $explTarget; break;
+                    case ">": $explodes = $nextRoll > $explTarget; break;
+                    case "=": $explodes = $nextRoll == $explTarget; break;
+                    case "<": $explodes = $nextRoll < $explTarget; break;
+                    case "<=": $explodes = $nextRoll <= $explTarget; break;
+                    default: ;
+                }
+            } while($explodes);
+            return $result;
+        }
+        /**
+         * Central Method for Rolls with a drop - Rolls may "explode" as in repeated and added up when a certain condition is met
+         */
+        private function partialRollWithDrop($numRolls, $numSides, $dropOperator, $sign, $nextString, $explodeOperator = null, $explodeTarget = null): DiceRollerPartialResult{
             $partialResult = new DiceRollerPartialResult();
 
-            $numRolls = $matches[1] ? $matches[1] : 1;
-            $numSides = $matches[2];
+            $numRolls = $numRolls ? $numRolls : 1;
+            $numSides = $numSides ? $numSides : 0;
             
             $result = [];
             if($numSides > 0){
@@ -189,7 +231,7 @@
                 $lowest = $numSides + 1;
                 $lowestIndex = 0;
                 for($i = 0; $i < $numRolls; $i++){
-                    $roll = random_int(1, $numSides);
+                    $roll = $this->rollWithExplode($numSides, $explodeOperator, $explodeTarget);
                     array_push($result, $roll);
                     if($roll > $highest){
                         $highest = $roll;
@@ -202,42 +244,79 @@
                 }
 
                 $indexToDrop = 0;
-                switch($matches[3]){
+                switch($dropOperator){
                     case "L": $indexToDrop = $lowestIndex; break;
                     case "H": $indexToDrop = $highestIndex; break;
                     default: break;
                 }
-
-                if($indexToDrop > 0){
+                if($indexToDrop >= 0){
                     $result[$indexToDrop] = 0;
                 }
             }
 
             $partialResult->rolls = $result;
-            $partialResult->nextSign = $this->getSign($matches[4]);
-            $partialResult->nextString = $matches[5];
+            $partialResult->nextSign = $this->getSign($sign);
+            $partialResult->nextString = $nextString;
             return $partialResult;
+        }
+        /**
+         * Rolls a multitude of dice and drops either the highest or the lowest value
+         * from the result.
+         * May continue with additional rolls. Dropping only effects the roll directly
+         * before the denotation -L/-H
+         */
+        private function partialRollSimpleWithDrop($matches): DiceRollerPartialResult{
+            $numRolls = $matches[1] ? $matches[1] : 1;
+            $numSides = $matches[2];
+            $dropOperator = $matches[3];
+            return $this->partialRollWithDrop($numRolls, $numSides, $dropOperator, $matches[4], $matches[5]);
+        }
+
+          /**
+         * Rolls a multitude of dice and drops either the highest or the lowest value
+         * from the result. Individual rolls may explode based on the given operator and target.
+         * Drop will be etermined after the rerolls resulting from explosions.
+         * May continue with additional rolls. Dropping only effects the roll directly
+         * before the denotation -L/-H
+         */
+        private function partialRollExplodingWithDrop($matches): DiceRollerPartialResult{
+            $numRolls = $matches[1] ? $matches[1] : 1;
+            $numSides = $matches[2];
+            $explodingOperator = $matches[3];
+            $explodingTarget = $matches[4];
+            $dropOperator = $matches[5];
+            return $this->partialRollWithDrop($numRolls, $numSides, $dropOperator, $matches[6], $matches[7], $explodingOperator, $explodingTarget);
         }
 
         /**
-         * Rolls a number of dice and adds the values together. 
-         * May continue with additonal rolls
+         * Central internal method for simple rolls. Rolls may "explode" as in repeated and added up when a certain condition is met
          */
-        private function partialRollSimple(array $matches): DiceRollerPartialResult{
+        private function partialRoll($numRolls, $numSides, $nextSign, $restString, $explodeOperator = null, $explodeTarget = null){
             $partialResult = new DiceRollerPartialResult();
-            $numRolls = $matches[1] ? $matches[1] : 1;
-            $numSides = $matches[2];
+            $numRolls = $numRolls ? $numRolls : 1;
+            $numSides = $numSides ? $numSides : 0;
 
             $result = [];
 
             if($numSides > 0){
                 for($i = 0; $i < $numRolls; $i++){
-                    array_push($result, random_int(1, $numSides));
+                    array_push($result, $this->rollWithExplode($numSides, $explodeOperator, $explodeTarget));
                 }
             }
             $partialResult->rolls = $result;
-            $partialResult->nextSign = $this->getSign($matches[3]);
-            $partialResult->nextString = $matches[4];
+            $partialResult->nextSign = $this->getSign($nextSign);
+            $partialResult->nextString = $restString;
+            return $partialResult;
+        }
+        /**
+         * Rolls a number of dice and adds the values together. 
+         * May continue with additonal rolls
+         */
+        private function partialRollSimple(array $matches): DiceRollerPartialResult{
+            $numRolls = $matches[1] ? $matches[1] : 1;
+            $numSides = $matches[2];
+            $partialResult = $this->partialRoll($numRolls, $numSides, $matches[3], $matches[4]);
+
             return $partialResult;
         }
     }
