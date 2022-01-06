@@ -119,10 +119,12 @@
             // This can be as simple as adding values together but also contains the merging of all dice arrays into a flat array and creating the print version
 
             $diceSum = 0;
+            $diceMod = 0;
             $diceArray = [];
             foreach($partialResults as $partial){
                 // add the mod to the result, with respect to the sign
                 $diceSum += $partial->sign * $partial->mod;
+                $diceMod += $partial->sign * $partial->mod;
 
                 // add the sum of the roll to the result, with respect to the sign
                 $diceSum += $partial-> sign * array_sum($partial->rolls);
@@ -134,12 +136,17 @@
             $result->setDiceArray($diceArray);
             $result->setDiceSum($diceSum);
             // create the Output String for the diceArray
-            $result->setDiceString($this->implodeRolls($diceArray));
+            $result->setDiceString($this->implodeRolls($diceArray, $diceMod));
             return $result;
         }
 
-        final function implodeRolls(array $rolls): String {
-            return "[" . implode(", ", $rolls) . "]";
+        final function implodeRolls(array $rolls, int $mod): String {
+            $result = "[" . implode(", ", $rolls) . "]";
+            if($mod && $mod != 0){
+                $suffix = $mod > 0 ? " +$mod" : " $mod";
+                $result .= $suffix;
+            }
+            return $result;
         }
        
         final function rollDice(String $rollString): int{

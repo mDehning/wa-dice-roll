@@ -3,50 +3,40 @@
 
     $diceRoller = new DiceRoller();
 
-    // roll a simple dice
-    $dice = "d10";
-    echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
+    $examples = [
+        ["d10", "Roll a simple dice"],
+        ["50d4", "Roll a dice multiple times"],
+        ["d10+5", "Add a static Number to a dice roll result"],
+        ["2d4-2", "Subtract a static number from a dice roll result"],
+        ["2d4 + 15d10", "Add two dice rolls together"],
+        ["2d4 + 3d100 + 1000", "Chain rolls and number additions as you like"],
+        ["XdY", "Non-numeric entries are ignored and return 0"],
+        ["1d100 * 5 + 100", "Everything after a wrong operator is ignored"],
+        ["20d1-L", "Dropping the lowest rolled number once"],
+        ["20d1-H", "Dropping the highest rolled number once"],
+        ["20d1-L + 50d1 + 5", "Dropping the highest rolled number once with added dice"]
+    ];
 
-    // roll a dice multiple times
-    $dice = "50d4";
-    echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
+    echo("<h2>Simple Rolls with Sum Result</h2>");
+    foreach($examples as $flatRoll){
+        $dice = $flatRoll[0];
+        $desc = $flatRoll[1];
+        echo("<p>$desc<br />$dice:\t ". $diceRoller->rollDice($dice) ."</p>\n");
+    }
 
-    // add a static number to a dice roll result
-    $dice = "d10+5";
-    echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
+    echo("<h2>Demonstrating complex roll result</h2>");
 
-    //subtract a static number to a dice roll result
-    $dice = "2d4-2";
-    echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
-
-    // add two dice rolls together
-    $dice = "2d4 +15d10";
-    echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
-
-    // Chain rolls and number additions as you like
-    $dice = "2d4 +3d100 +1000";
-    echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
-
-    // Non-numeric entries are ignored and return 0
-    $dice = "XdY";
-    echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
-
-    // Everything after a wrong operator is ignored
-    $dice = "1d100 * 5 + 100";
-    echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
-
-    // Dropping the lowest rolled number once
-    $dice = "20d1-L";
-    echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
-
-    // Dropping the highest rolled number once
-    $dice = "20d1-H";
-    echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
-
-    // Dropping the highest rolled number once with added dice
-    $dice = "20d1-L + 50d1 + 5"; // expect 19 + 50 + 5 = 74
-    echo("$dice:\t ". $diceRoller->rollDice($dice) ."<br />\n");
-
+    foreach($examples as $complexRoll){
+        $result = $diceRoller->rollDiceComplex($complexRoll[0]);
+        echo("<div><p>");
+        echo("<table>");
+        echo("<tr><td colspan=2>". $complexRoll[1] ."</td></tr>");
+        echo("<tr><td>Input:</td><td>". $result->getRollString() ."</td></tr>");
+        echo("<tr><td>Sum:</td><td>". $result->getdiceSum() ."</td></tr>");
+        echo("<tr><td>Rolled Dice:</td><td>". $result->getDiceString() ."</td></tr>");
+        echo("</table>\n\n");
+        echo("</p></div>");
+    }
     // Showing the Result Array of a roll
     $dice = "4d10 + 3d20 + 5";
     $result = $diceRoller->rollDiceComplex($dice);
