@@ -14,15 +14,15 @@ The method `rollDiceComplex($input)` will parse the input and return an extensiv
 
 ### Simple Roll
 ```
-Example:
-d10
+Example => Possible Result:
+d10   => [5] = 5
 ```
 Rolls a die with the specified number of sides (in this case 10) and returns the value. Any postive, non-null integer is possible here. Results will be an integer between 1 and N (including)
 
 ### Dice Pool of equal dice
 ```
-Example:
-5d10
+Example => Possible Result:
+5d10   => [1, 2, 10, 3, 3] = 19
 ```
 Rolls a number of identical dice and sums up the values. In this example, 5 die with ten sides will be rolled and added up.
 
@@ -30,9 +30,9 @@ Omitting a number before the d will always be interpreted as a 1
 
 ### Roll Modifiers
 ```
-Examples:
-d10 + 5
-d10 - 2
+Examples => Possible Result:
+d10 + 5    => [4] + 5 = 9
+d10 - 2    => [4] - 2 = 2
 ```
 Modifies a roll result with the given integer *after* the roll was taken. The modifiere can be added or subtracted to the value and can be any positive integer. In these examples, the first roll of a d10 gets 5 added to the result, while the second roll of a d10 gets 2 subtracted from the result (*Note: This can cause results to become negative*)
 
@@ -40,20 +40,20 @@ Modifies a roll result with the given integer *after* the roll was taken. The mo
 
 ### Mixed Dice Pools: 2d10 + 1d4
 ```
-Example:
-2d10 + 1d4
+Example => Possible Result:
+2d10 + 1d4    =>[8, 2, 3] = 13
 ```
 
 Multiple rolls can be combined together into a sum. In this example, two ten-sided dice are rolled and an additional four-sided die, the results will be added together.
 
 ### Target Numbers
 ```
-Examples:
-4d10 >=7
-4d10 >7
-4d10 =5
-4d10 <3
-4d10 <=2
+Examples => Possible Result:
+5d10 >=7    => [2, 3, 5, 7*, 8*] = 2 
+5d10 >7     => [2, 3, 5, 7, 8*] = 1
+5d10 =5     => [2, 3, 5*, 7, 8] = 1
+5d10 <3     => [2*, 3, 5, 7, 8] = 1
+5d10 <=3    => [2*, 3*, 5, 7, 8] = 2
 ```
 Will count the number of rolls which fulfill the given target number. 
 
@@ -65,7 +65,7 @@ Using Modifiers will directly affect the total number of successes, not the indi
 
 ### Exploding Dice / Reroll on Target
 ```
-Examples:
+Examples => Possible Result:
 2d10 !>=7
 4d10 !>7
 4d10 !=5
@@ -79,7 +79,7 @@ Exploding Dice can be combined with Target Numbers, the Success will be determin
 
 ### Drop Lowest or Highest
 ```
-Examples:
+Examples => Possible Result:
 5d10 -L
 5d10 -H
 ```
