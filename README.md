@@ -99,5 +99,5 @@ Can be Combined with Exploding Dice.
 ```
 Or Both - Target Number comes before the Exploding Target Number
 ```
-5d10 >=9 !>=8
+5d10 >=9 !>=8 -H
 ```
